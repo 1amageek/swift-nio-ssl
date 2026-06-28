@@ -24,6 +24,8 @@ import Musl
 import Glibc
 #elseif canImport(Bionic)
 import Bionic
+#elseif canImport(WASILibc)
+import WASILibc
 #else
 #error("unsupported os")
 #endif
@@ -32,6 +34,8 @@ import Bionic
 import struct Darwin.time_t
 #elseif canImport(Glibc)
 import struct Glibc.time_t
+#elseif canImport(WASILibc)
+import struct WASILibc.time_t
 #endif
 
 /// A reference to a BoringSSL Certificate object (`X509 *`).
@@ -101,6 +105,9 @@ public final class NIOSSLCertificate {
     ///     - file: The path to the file to load the certificate from.
     ///     - format: The format to use to parse the file.
     internal convenience init(_file file: String, format: NIOSSLSerializationFormats) throws {
+        #if os(WASI)
+        throw IOError(errnoCode: 0, reason: "Certificate file loading is unavailable on WASI")
+        #else
         let fileObject = try Posix.fopen(file: file, mode: "rb")
         defer {
             fclose(fileObject)
@@ -119,6 +126,7 @@ public final class NIOSSLCertificate {
         }
 
         self.init(withOwnedReference: x509!)
+        #endif
     }
 
     /// Create a ``NIOSSLCertificate`` from a buffer of bytes in either PEM or

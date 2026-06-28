@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 @_implementationOnly import CNIOBoringSSL
+import NIOCore
 
 /// A container for a single PKCS#12 bundle.
 ///
@@ -113,6 +114,9 @@ public struct NIOSSLPKCS12Bundle: Hashable {
     ///     - file: The path to the PKCS#12 bundle on disk.
     ///     - passphrase: The passphrase used for the bundle, as a sequence of UTF-8 bytes.
     public init<Bytes: Collection>(file: String, passphrase: Bytes?) throws where Bytes.Element == UInt8 {
+        #if os(WASI)
+        throw IOError(errnoCode: 0, reason: "PKCS#12 file loading is unavailable on WASI")
+        #else
         guard boringSSLIsInitialized else { fatalError("Failed to initialize BoringSSL") }
 
         let fileObject = try Posix.fopen(file: file, mode: "rb")
@@ -130,6 +134,7 @@ public struct NIOSSLPKCS12Bundle: Hashable {
         } else {
             throw BoringSSLError.unknownError(BoringSSLError.buildErrorStack())
         }
+        #endif
     }
 
     /// Create a ``NIOSSLPKCS12Bundle`` from the given bytes on disk,

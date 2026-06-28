@@ -30,15 +30,9 @@ import PackageDescription
 /// of the Swift toolchain, and so need to use local checkouts of our
 /// dependencies.
 func generateDependencies() -> [Package.Dependency] {
-    if Context.environment["SWIFTCI_USE_LOCAL_DEPS"] == nil {
-        return [
-            .package(url: "https://github.com/apple/swift-nio.git", from: "2.98.0")
-        ]
-    } else {
-        return [
-            .package(path: "../swift-nio")
-        ]
-    }
+    [
+        .package(path: "../swift-nio")
+    ]
 }
 
 // This doesn't work when cross-compiling: the privacy manifest will be included in the Bundle and
@@ -95,6 +89,8 @@ let package = Package(
                 .define("_WINSOCKAPI_", .when(platforms: [.windows])),
                 .define("NOMINMAX", .when(platforms: [.windows])),
                 .define("NOCRYPT", .when(platforms: [.windows])),
+                .define("_LIBCPP_HAS_NO_EXCEPTIONS", .when(platforms: [.wasi])),
+                .unsafeFlags(["-fno-exceptions"], .when(platforms: [.wasi])),
             ]
         ),
         .target(

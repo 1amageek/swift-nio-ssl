@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 @_implementationOnly import CNIOBoringSSL
+import NIOCore
 
 /// An ``NIOSSLPassphraseCallback`` is a callback that will be invoked by NIOSSL when it needs to
 /// get access to a private key that is stored in encrypted form.
@@ -143,6 +144,9 @@ public final class NIOSSLPrivateKey {
         format: NIOSSLSerializationFormats,
         callbackManager: CallbackManagerProtocol?
     ) throws {
+        #if os(WASI)
+        throw IOError(errnoCode: 0, reason: "Private key file loading is unavailable on WASI")
+        #else
         let fileObject = try Posix.fopen(file: file, mode: "rb")
         defer {
             // If fclose fails there is nothing we can do about it.
@@ -181,6 +185,7 @@ public final class NIOSSLPrivateKey {
         }
 
         self.init(withReference: key!)
+        #endif
     }
 
     /// A delegating initializer for `init(buffer:format:passphraseCallback)` and `init(buffer:format:)`.

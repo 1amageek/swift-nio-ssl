@@ -24,6 +24,8 @@ import Musl
 import Glibc
 #elseif canImport(Android)
 import Android
+#elseif canImport(WASILibc)
+import WASILibc
 #else
 #error("unsupported os")
 #endif
@@ -57,6 +59,9 @@ internal enum FileSystemObject {
     case file
 
     static internal func pathType(path: String) -> FileSystemObject? {
+        #if os(WASI)
+        return nil
+        #else
         var statObj = stat()
         do {
             try Posix.stat(path: path, buf: &statObj)
@@ -68,6 +73,7 @@ internal enum FileSystemObject {
         return (statObj.st_mode & UInt32(S_IFDIR)) != 0 ? .directory : .file
         #else
         return (statObj.st_mode & S_IFDIR) != 0 ? .directory : .file
+        #endif
         #endif
     }
 }
@@ -780,6 +786,9 @@ extension NIOSSLContext {
 
     /// Takes a path and determines if the file at this path is of c_rehash format .
     internal static func _isRehashFormat(path: String) throws -> Bool {
+        #if os(WASI)
+        return false
+        #else
         // Check if the element’s name matches the c_rehash symlink name format.
         // The links created are of the form HHHHHHHH.D, where each H is a hexadecimal character and D is a single decimal digit.
         let utf8PathView = path.utf8
@@ -816,6 +825,7 @@ extension NIOSSLContext {
         // Return true at this point because the file format is considered to be in rehash format and a symlink.
         // Rehash format being "%08lx.%d" or HHHHHHHH.D
         return true
+        #endif
     }
 }
 
@@ -936,16 +946,25 @@ internal class DirectoryContents: Sequence, IteratorProtocol {
     // Otherwise an OpaquePointer needs to be used to account for the non-defined type in glibc.
     #if canImport(Darwin)
     let dir: UnsafeMutablePointer<DIR>
+    #elseif os(WASI)
+    let dir: OpaquePointer?
     #else
     let dir: OpaquePointer
     #endif
 
     init(path: String) {
         self.path = path
+        #if os(WASI)
+        self.dir = nil
+        #else
         self.dir = opendir(path)!
+        #endif
     }
 
     func next() -> String? {
+        #if os(WASI)
+        return nil
+        #else
         if let dirent: UnsafeMutablePointer<dirent> = readdir(self.dir) {
             let name = withUnsafePointer(to: &dirent.pointee.d_name) { (ptr) -> String in
                 // Pointers to homogeneous tuples in Swift are always bound to both the tuple type and the element type,
@@ -956,10 +975,13 @@ internal class DirectoryContents: Sequence, IteratorProtocol {
             return self.path + name
         }
         return nil
+        #endif
     }
 
     deinit {
+        #if !os(WASI)
         closedir(dir)
+        #endif
     }
 }
 

@@ -30,16 +30,19 @@ import Musl
 import Glibc
 #elseif canImport(Android)
 import Android
+#elseif canImport(WASILibc)
+import WASILibc
 #else
 #error("unsupported os")
 #endif
 
-#if os(Android)
+#if os(Android) || os(WASI)
 internal typealias FILEPointer = OpaquePointer
 #else
 internal typealias FILEPointer = UnsafeMutablePointer<FILE>
 #endif
 
+#if !os(WASI)
 private let sysFopen = fopen
 private let sysMlock = mlock
 private let sysMunlock = munlock
@@ -47,6 +50,7 @@ private let sysFclose = fclose
 private let sysStat = { @Sendable in stat($0, $1) }
 private let sysLstat = lstat
 private let sysReadlink = readlink
+#endif
 
 // MARK:- Copied code from SwiftNIO
 private func isUnacceptableErrno(_ code: CInt) -> Bool {
@@ -99,18 +103,26 @@ internal func wrapErrorIsNullReturnCall<T>(
 internal enum Posix {
     @inline(never)
     internal static func fopen(file: String, mode: String) throws -> FILEPointer {
+        #if os(WASI)
+        throw IOError(errnoCode: 0, reason: "fopen is unavailable on WASI")
+        #else
         try file.withCString { fileCString in
             try wrapErrorIsNullReturnCall(errorReason: "fopen(file: \"\(file)\", mode: \"\(mode)\")") {
                 sysFopen(fileCString, mode)
             }
         }
+        #endif
     }
 
     @inline(never)
     internal static func fclose(file: FILEPointer) throws -> CInt {
+        #if os(WASI)
+        throw IOError(errnoCode: 0, reason: "fclose is unavailable on WASI")
+        #else
         try wrapSyscall {
             sysFclose(file)
         }
+        #endif
     }
 
     @inline(never)
@@ -119,11 +131,16 @@ internal enum Posix {
         buf: UnsafeMutablePointer<Int8>,
         bufSize: Int
     ) throws -> Int {
+        #if os(WASI)
+        throw IOError(errnoCode: 0, reason: "readlink is unavailable on WASI")
+        #else
         try wrapSyscall {
             sysReadlink(path, buf, bufSize)
         }
+        #endif
     }
 
+    #if !os(WASI)
     @inline(never)
     @discardableResult
     internal static func stat(path: UnsafePointer<CChar>, buf: UnsafeMutablePointer<stat>) throws -> CInt {
@@ -139,20 +156,29 @@ internal enum Posix {
             sysLstat(path, buf)
         }
     }
+    #endif
 
     @inline(never)
     @discardableResult
     internal static func mlock(addr: UnsafeRawPointer, len: size_t) throws -> CInt {
+        #if os(WASI)
+        throw IOError(errnoCode: 0, reason: "mlock is unavailable on WASI")
+        #else
         try wrapSyscall {
             sysMlock(addr, len)
         }
+        #endif
     }
 
     @inline(never)
     @discardableResult
     internal static func munlock(addr: UnsafeRawPointer, len: size_t) throws -> CInt {
+        #if os(WASI)
+        throw IOError(errnoCode: 0, reason: "munlock is unavailable on WASI")
+        #else
         try wrapSyscall {
             sysMunlock(addr, len)
         }
+        #endif
     }
 }

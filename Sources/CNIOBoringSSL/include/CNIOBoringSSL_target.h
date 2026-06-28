@@ -163,6 +163,11 @@
 #define OPENSSL_NO_SOCK
 #endif
 
+#if defined(__wasi__)
+#define OPENSSL_NO_POSIX_IO
+#define OPENSSL_NO_SOCK
+#endif
+
 #if defined(__ANDROID_API__)
 #define OPENSSL_ANDROID
 #endif

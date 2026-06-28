@@ -22,12 +22,22 @@ import Musl
 import Glibc
 #elseif canImport(Android)
 import Android
+#elseif canImport(WASILibc)
+import WASILibc
 #else
 #error("unsupported os")
 #endif
 
 extension String {
     private func isIPAddress() -> Bool {
+        #if os(WASI)
+        do {
+            _ = try SocketAddress(ipAddress: self, port: 0)
+            return true
+        } catch {
+            return false
+        }
+        #else
         // We need some scratch space to let inet_pton write into.
         var ipv4Addr = in_addr()
         var ipv6Addr = in6_addr()
@@ -35,6 +45,7 @@ extension String {
         return self.withCString { ptr in
             inet_pton(AF_INET, ptr, &ipv4Addr) == 1 || inet_pton(AF_INET6, ptr, &ipv6Addr) == 1
         }
+        #endif
     }
 
     func validateSNIServerName() throws {
