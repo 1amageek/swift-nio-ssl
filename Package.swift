@@ -13,24 +13,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
 import PackageDescription
-
-let manifestDirectoryURL = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
-let manifestPath = manifestDirectoryURL.standardizedFileURL.path
-let isDependencyCheckout = manifestPath.contains("/.build/checkouts/")
-    || manifestPath.contains("/SourcePackages/checkouts/")
-
-func localOrForkDependency(_ repository: String, localPath: String) -> Package.Dependency {
-    let resolvedLocalPath = URL(fileURLWithPath: localPath, relativeTo: manifestDirectoryURL)
-        .standardizedFileURL
-        .path
-    if !isDependencyCheckout && FileManager.default.fileExists(atPath: resolvedLocalPath) {
-        return .package(path: resolvedLocalPath)
-    }
-
-    return .package(url: "https://github.com/1amageek/\(repository).git", branch: "main")
-}
 
 // This package contains a vendored copy of BoringSSL. For ease of tracking
 // down problems with the copy of BoringSSL in use, we include a copy of the
@@ -48,7 +31,7 @@ func localOrForkDependency(_ repository: String, localPath: String) -> Package.D
 /// dependencies.
 func generateDependencies() -> [Package.Dependency] {
     [
-        localOrForkDependency("swift-nio", localPath: "../swift-nio")
+        .package(url: "https://github.com/1amageek/swift-nio.git", branch: "main")
     ]
 }
 
